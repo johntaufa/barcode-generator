@@ -46,24 +46,38 @@
 
 <script src="barcode.js"></script>
 <script>
+function formatISBNLabel(isbn13) {
+  // Format as "ISBN 978-x-xxx-xxxxx-x" using the EAN/Bookland grouping:
+  // ISBN prefix (978/979) - registration group (1 digit) - registrant (3 digits) - publication (5 digits) - check
+  return 'ISBN ' + isbn13.slice(0,3) + '-' + isbn13[3] + '-' + isbn13.slice(4,7) + '-' + isbn13.slice(7,12) + '-' + isbn13[12];
+}
+
 function drawBarcode(canvas, isbn13) {
   const ctx = canvas.getContext('2d');
 
-  // Target: 600x359 px at 300 PPI
   const WIDTH = 600;
-  const HEIGHT = 359;
   const barWidth = 5;
+  const isbnLabelFontSize = 28;
+  const isbnLabelHeight = 40;
   const topPad = 8;
   const barHeight = 270;
   const guardExtra = 25;
   const fontSize = 36;
   const totalModules = 95;
+  const HEIGHT = isbnLabelHeight + topPad + barHeight + guardExtra + fontSize + 8;
 
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
 
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // Draw ISBN label above the barcode
+  ctx.fillStyle = '#000';
+  ctx.font = `bold ${isbnLabelFontSize}px "OCR-B", "Courier New", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(formatISBNLabel(isbn13), WIDTH / 2, 4);
 
   const bars = encodeEAN13(isbn13);
 
@@ -72,6 +86,7 @@ function drawBarcode(canvas, isbn13) {
   const leadingDigitWidth = 40;
   const totalBarArea = leadingDigitWidth + barsWidth;
   const offsetX = Math.floor((WIDTH - totalBarArea) / 2) + leadingDigitWidth;
+  const barTop = isbnLabelHeight + topPad;
 
   ctx.fillStyle = '#000';
 
@@ -79,7 +94,7 @@ function drawBarcode(canvas, isbn13) {
     if (bars[i]) {
       const isGuard = i < 3 || (i >= 45 && i < 50) || i >= 92;
       const h = isGuard ? barHeight + guardExtra : barHeight;
-      ctx.fillRect(offsetX + i * barWidth, topPad, barWidth, h);
+      ctx.fillRect(offsetX + i * barWidth, barTop, barWidth, h);
     }
   }
 
@@ -87,7 +102,7 @@ function drawBarcode(canvas, isbn13) {
   ctx.fillStyle = '#000';
   ctx.font = `bold ${fontSize}px "OCR-B", "Courier New", monospace`;
   ctx.textBaseline = 'top';
-  const textY = topPad + barHeight + 2;
+  const textY = barTop + barHeight + 2;
 
   // Leading digit — left of start guard
   ctx.textAlign = 'right';
@@ -96,7 +111,6 @@ function drawBarcode(canvas, isbn13) {
   // Left group (digits 1-6) — evenly spaced under left bars
   ctx.textAlign = 'center';
   const leftStart = offsetX + 3 * barWidth; // after start guard
-  const digitGroupWidth = 42 * barWidth;    // 6 digits × 7 modules each
   for (let i = 0; i < 6; i++) {
     const x = leftStart + (i + 0.5) * 7 * barWidth;
     ctx.fillText(isbn13[i + 1], x, textY);
